@@ -136,8 +136,7 @@ export interface PerformanceBinding {
   observerCounts: Uint32Array;
   milestones: Float64Array;
   setupObservers(callback: PerformanceObserverCallback): void;
-  installGarbageCollectionTracking(): void;
-  removeGarbageCollectionTracking(): void;
+  updateGarbageCollectionTracking(): void;
   notify(type: string, entry: unknown): void;
   loopIdleTime(): number;
   createELDHistogram(
@@ -146,6 +145,7 @@ export interface PerformanceBinding {
   ): InternalPerformanceBinding.ELDHistogram;
   markBootstrapComplete(): void;
   uvMetricsInfo(): void;
-  uvMetricsBuffer: Int32Array;
+  uvMetricsBuffer: Float64Array;
+  uvMetricsBigIntBuffer: BigUint64Array;
   now(): number;
 }
