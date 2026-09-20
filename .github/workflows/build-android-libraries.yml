@@ -1,0 +1,54 @@
+name: Build Android shared libraries
+
+on:
+  push:
+    tags:
+      - '*'
+
+permissions:
+  contents: read
+
+env:
+  ANDROID_API_LEVEL: '31'
+  ANDROID_NDK_VERSION: '30.0.16248370'
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: |
+          sdkmanager "ndk;${ANDROID_NDK_VERSION}"
+          echo "ANDROID_NDK_ROOT=${ANDROID_HOME}/ndk/${ANDROID_NDK_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Configure Node.js for Android
+        run: ./android-configure "$ANDROID_NDK_ROOT" "$ANDROID_API_LEVEL" arm64
+
+      - name: Build libnode.so
+        run: make -j"$(nproc)"
+
+      - name: Build libcpufeatures.so
+        run: ./tools/build_libcpufeatures.sh "$ANDROID_NDK_ROOT" "$ANDROID_API_LEVEL" arm64-v8a
+
+      - name: Verify shared libraries
+        run: |
+          test -s out/Release/libnode.so
+          test -s out/Release/libcpufeatures.so
+
+      - name: Upload Android shared libraries
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: android-libraries-${{ github.ref_name }}
+          path: |
+            out/Release/libnode.so
+            out/Release/libcpufeatures.so
+          if-no-files-found: error
+          archive: false
