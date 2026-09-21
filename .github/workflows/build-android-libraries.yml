@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  ANDROID_API_LEVEL: '31'
+  ANDROID_API_LEVEL: 31
   ANDROID_NDK_VERSION: '30.0.16248370'
 
 jobs:

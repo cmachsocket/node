@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Copyright (c) 2026, cmachsocket contributors.
 #
 # Build a prebuilt libcpufeatures.so stub for ONE Android ABI, the way
@@ -44,7 +44,7 @@
 # clang toolchain that android_configure.py uses (see
 # `<NDK>/toolchains/llvm/prebuilt/<host>/bin/<triple>-clang`).
 
-set -euo pipefail
+set -eu
 
 if [ "$#" -ne 3 ]; then
   echo "Usage: $0 <ANDROID_NDK_PATH> <API_LEVEL> <ABI>" >&2
@@ -99,7 +99,8 @@ mkdir -p "$OUT_DIR"
 # ---------------------------------------------------------------------
 
 STUB_SRC="$(mktemp -t cpufeatures_stub.XXXXXX.c)"
-trap 'rm -f "$STUB_SRC"' EXIT
+SYMBOLS_OUTPUT="$(mktemp -t cpufeatures_symbols.XXXXXX)"
+trap 'rm -f "$STUB_SRC" "$SYMBOLS_OUTPUT"' EXIT
 
 cat > "$STUB_SRC" <<'EOF'
 /* Stub libcpufeatures for nodejs-mobile.
@@ -167,15 +168,19 @@ echo
 # e.g. Chinese on zh_CN.UTF-8 systems — and would then not match our
 # regex).
 READOBJ="$TOOLCHAIN_BIN/llvm-readobj"
-if [ -x "$READOBJ" ] \
-     && "$READOBJ" --dyn-symbols "$OUT" 2>/dev/null \
-        | grep -q 'android_getCpuFeatures'; then
-  VERIFIED=ndk-readobj
-elif command -v readelf >/dev/null 2>&1 \
-     && readelf --dyn-syms "$OUT" 2>/dev/null \
-        | grep -q 'android_getCpuFeatures'; then
-  VERIFIED=host-readelf
-else
+if [ -x "$READOBJ" ]; then
+  "$READOBJ" --dyn-symbols "$OUT" > "$SYMBOLS_OUTPUT" 2>/dev/null
+  if grep -q 'android_getCpuFeatures' "$SYMBOLS_OUTPUT"; then
+    VERIFIED=ndk-readobj
+  fi
+elif command -v readelf >/dev/null 2>&1; then
+  readelf --dyn-syms "$OUT" > "$SYMBOLS_OUTPUT" 2>/dev/null
+  if grep -q 'android_getCpuFeatures' "$SYMBOLS_OUTPUT"; then
+    VERIFIED=host-readelf
+  fi
+fi
+
+if [ "${VERIFIED:-}" = "" ]; then
   echo "Error: built $OUT but it does not export android_getCpuFeatures" >&2
   exit 1
 fi
