@@ -1945,6 +1945,17 @@ def configure_node(o):
   # under Rosetta 2.
   if flavor == 'mac' and target_arch == 'x64':
     o['variables']['cargo_rust_target'] = 'x86_64-apple-darwin'
+  # Android is always cross-compiled, so cargo has to be told explicitly which
+  # Rust target to build for. Without this the Rust crates (Temporal) end up
+  # built for the build machine and linking libnode fails with
+  # "'...libnode_crates.a' is incompatible with aarch64linux".
+  if options.dest_os == 'android':
+    o['variables']['cargo_rust_target'] = {
+      'arm64': 'aarch64-linux-android',
+      'arm': 'armv7-linux-androideabi',
+      'x64': 'x86_64-linux-android',
+      'ia32': 'i686-linux-android',
+    }.get(target_arch, '')
 
   # Allow overriding the compiler - needed by embedders.
   if options.use_clang:
