@@ -4443,6 +4443,9 @@ Creating SHAKE-128 and SHAKE-256 digests without an explicit
 
 <!-- YAML
 changes:
+  - version: REPLACEME
+    pr-url: https://github.com/nodejs/node/pull/58535
+    description: Runtime deprecation.
   - version:
      - v24.6.0
      - v22.19.0
@@ -4709,9 +4712,14 @@ successfully before the response closed.
 
 <!-- YAML
 changes:
-  - version: v26.8.2
+  - version: REPLACEME
     pr-url: https://github.com/nodejs/node/pull/64794
     description: Runtime deprecation.
+  - version:
+    - v26.8.2
+    - v24.22.0
+    pr-url: https://github.com/nodejs/node/pull/64794
+    description: Documentation-only.
 -->
 
 Type: Runtime
@@ -4726,7 +4734,9 @@ calling or overriding `_listen2`.
 
 <!-- YAML
 changes:
-  - version: v26.8.2
+  - version:
+    - v26.8.2
+    - v24.22.0
     pr-url: https://github.com/nodejs/node/pull/64342
     description: Documentation-only deprecation.
 -->
@@ -4800,6 +4810,34 @@ async function example() {
   await doWork();
 }
 ```
+
+### DEP0210: `sqlite.DatabaseSync`
+
+<!-- YAML
+changes:
+  - version: v26.11.0
+    pr-url: https://github.com/nodejs/node/pull/65988
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only
+
+`node:sqlite`'s `DatabaseSync` class was renamed to `Database`. `DatabaseSync`
+is kept as a deprecated alias. Use `Database` instead.
+
+### DEP0211: `sqlite.StatementSync`
+
+<!-- YAML
+changes:
+  - version: v26.11.0
+    pr-url: https://github.com/nodejs/node/pull/65988
+    description: Documentation-only deprecation.
+-->
+
+Type: Documentation-only
+
+`node:sqlite`'s `StatementSync` class was renamed to `Statement`.
+`StatementSync` is kept as a deprecated alias. Use `Statement` instead.
 
 [DEP0142]: #dep0142-repl_builtinlibs
 [DEP0156]: #dep0156-aborted-property-and-abort-aborted-event-in-http

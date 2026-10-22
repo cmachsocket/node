@@ -296,6 +296,27 @@ executable only embeds the archive; read the files through the file system
 APIs instead. `"vfsArchive"` requires `"useVfs": true` and cannot be
 combined with `"assets"`.
 
+The archive is mounted at the mount point reserved for [`--vfs-load`][], which
+is the same in every thread, and worker threads mount it as well. A path into
+the archive, such as the main script's `__filename`, can therefore be loaded
+in a worker:
+
+```cjs
+const { Worker, isMainThread } = require('node:worker_threads');
+
+if (isMainThread) {
+  new Worker(__filename);
+} else {
+  // The worker runs the same script, from the same archive.
+  console.log(require('./lib/math.js').add(2, 3));
+}
+```
+
+Since that mount point is taken by the archive, `--vfs-load` cannot be used
+with `"vfsArchive"`: `--build-sea` rejects it in `"execArgv"`, and the
+executable rejects it at startup when it comes from `--node-options` or from
+the `execArgv` of a worker.
+
 #### Snapshot and code caching limitations
 
 `"useVfs": true` cannot be used together with `"useSnapshot": true` or
@@ -351,8 +372,6 @@ the preparation blob and get injected into the final executable. When the single
 executable application is launched, instead of compiling the `main` script from
 scratch, Node.js would use the code cache to speed up the compilation, then
 execute the script, which would improve the startup performance.
-
-**Note:** `import()` does not work when `useCodeCache` is `true`.
 
 ### Execution arguments
 
@@ -587,8 +606,9 @@ injected main script with the following properties:
 
 <!-- TODO(joyeecheung): support and document module.registerHooks -->
 
-When using `"mainFormat": "module"`, `import()` can be used to dynamically
-load built-in modules. Attempting to use `import()` to load modules from
+`import()` can be used to dynamically load built-in modules in both
+CommonJS and ESM (`"mainFormat": "module"`) single executable applications.
+Attempting to use `import()` to load modules from
 the file system will throw an error.
 
 ### Using native addons in the injected main script
@@ -787,6 +807,7 @@ to help us document them.
 [Using native addons in the injected main script]: #using-native-addons-in-the-injected-main-script
 [VFS documentation]: vfs.md
 [Windows SDK]: https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/
+[`--vfs-load`]: cli.md#--vfs-loadsource
 [`node:zlib`]: zlib.md
 [`process.execPath`]: process.md#processexecpath
 [`require()`]: modules.md#requireid

@@ -6,34 +6,58 @@
   withSSL ? true,
   withFFI ? true,
   withPerfetto ? false,
-  withTemporal ? false,
+  withTemporal ? true,
 }:
 {
   inherit (pkgs)
     ada
-    brotli
     gtest
     libuv
     merve
     nbytes
     nghttp2
     simdjson
-    uvwasi
+    simdutf
     zlib
     zstd
     ;
   abseil = pkgs.abseil-cpp;
+  brotli = pkgs.brotli.overrideAttrs (old: {
+    patches = (old.patches or [ ]) ++ [
+      (pkgs.fetchpatch2 {
+        url = "https://github.com/google/brotli/commit/0ed4268a4401abcb4472096340477cf4af7d1a2b.patch?full_index=1";
+        hash = "sha256-dVpnYI2JLDEt2VQkbI6RnbpdcQSMB5bTQ6TJp5CLnyw=";
+      })
+    ];
+  });
   cares = pkgs.c-ares;
   hdr-histogram = pkgs.hdrhistogram_c;
   highway = pkgs.libhwy;
   http-parser = pkgs.llhttp;
-  simdutf = pkgs.simdutf.overrideAttrs (old: {
-    # TODO: remove this once the pin we use has picked up https://github.com/NixOS/nixpkgs/pull/557405
-    cmakeFlags = old.cmakeFlags ++ [ (pkgs.lib.cmakeFeature "SIMDUTF_CXX_STANDARD" "20") ];
+
+  # TODO: remove this override once the pin we use has picked up https://github.com/NixOS/nixpkgs/pull/575002
+  uvwasi = pkgs.uvwasi.overrideAttrs (old: {
+    patches = old.patches ++ [
+      (pkgs.fetchpatch2 {
+        url = "https://github.com/nodejs/uvwasi/pull/326.patch";
+        hash = "sha256-PPr62+qycCSfr1/JWXhJS6X8vW10ea2b4L4361tdwgE=";
+      })
+    ];
+
+    buildInputs = [ ];
+    propagatedBuildInputs = old.buildInputs;
   });
 }
 // (pkgs.lib.optionalAttrs withLief {
-  inherit (pkgs) lief;
+  # TODO: remove this override once the pin we use has picked up a new LIEF version that includes that patch.
+  lief = pkgs.lief.overrideAttrs (old: {
+    patches = (old.patches or [ ]) ++ [
+      (pkgs.fetchpatch2 {
+        url = "https://github.com/lief-project/LIEF/commit/15777f106f6220046cf26ee99940d1f56751325e.patch?full_index=1";
+        hash = "sha256-Dm7YsBZ4+It+c5PEodsjq7cdOryYOSXt6Lf7h0OH+7M=";
+      })
+    ];
+  });
 })
 // (pkgs.lib.optionalAttrs withQuic {
   inherit (pkgs)

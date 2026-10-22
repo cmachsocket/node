@@ -1,5 +1,3 @@
-#include "ngtcp2/ngtcp2.h"
-#if HAVE_OPENSSL && HAVE_QUIC
 #include "guard.h"
 #ifndef OPENSSL_NO_QUIC
 #include <aliased_struct-inl.h>
@@ -14,6 +12,7 @@
 #include "application.h"
 #include "bindingdata.h"
 #include "defs.h"
+#include "ngtcp2/ngtcp2.h"
 #include "session.h"
 #include "streams.h"
 
@@ -291,11 +290,14 @@ std::unique_ptr<DataQueue::Entry> CreateEntryFromBuffer(
 
 Maybe<std::shared_ptr<DataQueue>> Stream::GetDataQueueFromSource(
     Environment* env, Local<Value> value) {
-  DCHECK_IMPLIES(!value->IsUndefined(), value->IsObject());
+  DCHECK(value->IsUndefined() || value->IsNull() || value->IsObject());
   std::vector<std::unique_ptr<DataQueue::Entry>> entries;
   if (value->IsUndefined()) {
     // Return an empty DataQueue.
     return Just(std::shared_ptr<DataQueue>());
+  } else if (value->IsNull()) {
+    // Return an empty, completed data source.
+    return Just(DataQueue::CreateIdempotent(std::move(entries)));
   } else if (value->IsArrayBuffer()) {
     auto buffer = value.As<ArrayBuffer>();
     auto length = buffer->ByteLength();
@@ -433,12 +435,8 @@ struct Stream::Impl {
   JS_METHOD(StopSending) {
     Stream* stream;
     ASSIGN_OR_RETURN_UNWRAP(&stream, args.This());
-    error_code code = 0;
-    CHECK_IMPLIES(!args[0]->IsUndefined(), args[0]->IsBigInt());
-    if (!args[0]->IsUndefined()) {
-      bool unused = false;  // not used but still necessary.
-      code = args[0].As<BigInt>()->Uint64Value(&unused);
-    }
+    CHECK(args[0]->IsBigInt());
+    error_code code = args[0].As<BigInt>()->Uint64Value();
 
     stream->SendStopSending(code);
   }
@@ -450,12 +448,8 @@ struct Stream::Impl {
   JS_METHOD(ResetStream) {
     Stream* stream;
     ASSIGN_OR_RETURN_UNWRAP(&stream, args.This());
-    error_code code = 0;
-    CHECK_IMPLIES(!args[0]->IsUndefined(), args[0]->IsBigInt());
-    if (!args[0]->IsUndefined()) {
-      bool lossless = false;  // not used but still necessary.
-      code = args[0].As<BigInt>()->Uint64Value(&lossless);
-    }
+    CHECK(args[0]->IsBigInt());
+    error_code code = args[0].As<BigInt>()->Uint64Value();
 
     stream->DoStreamReset(code);
   }
@@ -1916,4 +1910,3 @@ void Stream::Unschedule() {
 }  // namespace node
 
 #endif  // OPENSSL_NO_QUIC
-#endif  // HAVE_OPENSSL && HAVE_QUIC

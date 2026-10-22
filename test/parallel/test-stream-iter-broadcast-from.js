@@ -3,7 +3,7 @@
 
 const common = require('../common');
 const assert = require('assert');
-const { broadcast, Broadcast, from, text } = require('stream/iter');
+const { Broadcast, broadcast, dump, from, text } = require('stream/iter');
 const { setImmediate } = require('timers/promises');
 
 // =============================================================================
@@ -144,8 +144,7 @@ async function testBroadcastFromCancelWhileBlocked() {
   let writesAfterCancel = 0;
   writer.writevSync = () => { writesAfterCancel++; return true; };
   bc.cancel();
-  assert.deepStrictEqual(await pendingRead, {
-    __proto__: null,
+  assert.deepStrictEqual({ ...await pendingRead }, {
     done: true,
     value: undefined,
   });
@@ -172,14 +171,22 @@ async function testBroadcastFromSourceError() {
   const { broadcast: bc } = Broadcast.from(failingSource());
   const consumer = bc.push();
   await assert.rejects(async () => {
-    // eslint-disable-next-line no-unused-vars
-    for await (const _ of consumer) { /* consume */ }
+    await dump(consumer);
   }, { message: 'broadcast source boom' });
 }
 
 // =============================================================================
 // Protocol validation
 // =============================================================================
+
+function testBroadcastProtocolReturnsBroadcast() {
+  const { broadcast: expected } = broadcast();
+  const obj = {
+    [Symbol.for('Stream.broadcastProtocol')]() { return expected; },
+  };
+  assert.strictEqual(Broadcast.from(obj), expected);
+  expected.cancel();
+}
 
 function testBroadcastProtocolReturnsNull() {
   const obj = {
@@ -223,6 +230,7 @@ Promise.all([
   testAlreadyAbortedSignal(),
   testBroadcastFromCancelWhileBlocked(),
   testBroadcastFromSourceError(),
+  testBroadcastProtocolReturnsBroadcast(),
   testBroadcastProtocolReturnsNull(),
   testBroadcastProtocolReturnsString(),
   testBroadcastProtocolReturnsUndefined(),

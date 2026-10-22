@@ -237,7 +237,7 @@ if "%target_env%"=="vs2026" set "node_gyp_exe=%node_gyp_exe% --msvs_version=2026
 if "%*"=="lint" if exist "%node_exe%" goto lint-cpp
 
 :: skip building if the only argument received was format-md
-if "%*"=="format-md" if exist "%node_exe%" goto format-md
+if "%*"=="format-md" if exist "%node_exe%" goto lint-md-build
 
 if "%config%"=="Debug"      set configure_flags=%configure_flags% --debug
 if defined nosnapshot       set configure_flags=%configure_flags% --without-snapshot
@@ -296,6 +296,18 @@ if errorlevel 1 goto :exit
 REM NASM is only needed on x86_64.
 if not defined openssl_no_asm if "%target_arch%" NEQ "arm64" call tools\msvs\find_nasm.cmd
 if errorlevel 1 echo Could not find NASM, install it or build with openssl-no-asm. See BUILDING.md.
+
+REM cargo is needed to build the Rust crates used for Temporal.
+if defined nobuild goto skip-find-cargo
+if "%target%"=="Clean" goto skip-find-cargo
+echo %configure_flags% | findstr /C:"--v8-disable-temporal-support" /C:"--shared-temporal_capi" >NUL && goto skip-find-cargo
+call tools\msvs\find_cargo.cmd
+if errorlevel 1 (
+  echo Could not find cargo, install the Rust toolchain. See BUILDING.md.
+  set exit_code=1
+  goto exit
+)
+:skip-find-cargo
 
 call :getnodeversion || exit /b 1
 
@@ -852,7 +864,7 @@ echo running lint-js
 goto lint-js-fix
 
 :lint-js-fix
-if not defined lint_js_fix goto lint-md
+if not defined lint_js_fix goto lint-md-build
 if not exist tools\eslint\node_modules\eslint goto no-lint
 echo running lint-js-fix
 %node_exe% tools\eslint\node_modules\eslint\bin\eslint.js --cache --max-warnings=0 --report-unused-disable-directives --rule "@stylistic/js/linebreak-style: 0" eslint.config.mjs benchmark doc lib test tools --fix
@@ -900,6 +912,7 @@ for /D %%D IN (doc\*) do (
 )
 %node_exe% tools\lint-md\lint-md.mjs --format %lint_md_files%
 ENDLOCAL
+goto exit
 
 :no-lint
 echo Linting is not available through the source tarball.
