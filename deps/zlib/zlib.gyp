@@ -201,6 +201,15 @@
                 'USE_FILE32API'
               ],
             }],
+            ['OS=="android"', {
+              # cpu_features.c calls android_getCpuFeatures() because
+              # ARMV8_OS_ANDROID is defined above. Recent NDKs no longer ship
+              # libcpufeatures as a prebuilt archive, so provide the symbol
+              # ourselves. See cpufeatures_stub.c.
+              'sources': [
+                'cpufeatures_stub.c',
+              ],
+            }],
             # Incorporate optimizations where possible.
             ['(target_arch in "ia32 x64" and OS!="ios") or arm_fpu=="neon"', {
               'dependencies': [ 'zlib_data_chunk_simd' ],
